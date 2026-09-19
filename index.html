@@ -3,759 +3,500 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streamer Dashboard - YouTube Live</title>
+    <title>Streamer Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        streamer: {
-                            dark: '#0f172a',    // slate-900
-                            panel: '#1e293b',   // slate-800
-                            accent: '#8b5cf6',  // violet-500
-                            live: '#ef4444',    // red-500
-                            success: '#10b981', // emerald-500
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
-        body {
-            background-color: #0f172a;
-            color: #f8fafc;
-            overflow: hidden; 
-        }
-        
+        /* カスタムスクロールバー */
         ::-webkit-scrollbar {
             width: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #1e293b;
+            background: #1f2937;
         }
         ::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #4b5563;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #6b7280;
         }
-
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        
+        /* Stream Deck風ボタンの押し込みエフェクト */
+        .deck-btn {
+            box-shadow: 0 4px 0 #374151, 0 5px 10px rgba(0,0,0,0.3);
+            transition: all 0.1s;
         }
-
-        .chat-message-enter {
-            animation: slideIn 0.3s ease-out forwards;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .pulse-live {
-            animation: pulse-red 2s infinite;
-        }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        .deck-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #374151, 0 1px 2px rgba(0,0,0,0.3);
         }
     </style>
 </head>
-<body class="h-screen flex flex-col font-sans">
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col font-sans selection:bg-blue-500 selection:text-white">
 
-    <!-- Toast Notification Container -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden flex items-center justify-center">
-        <div class="bg-streamer-panel p-6 rounded-xl border border-gray-700 w-full max-w-md shadow-2xl relative">
-            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-gear text-streamer-accent"></i> ダッシュボード設定
-            </h2>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">YouTube Data API v3 Key <span class="text-red-400">*</span></label>
-                    <input type="password" id="inputApiKey" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-streamer-accent" placeholder="AIzaSy...">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">YouTube Channel ID (登録者数用)</label>
-                    <input type="text" id="inputChannelId" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-streamer-accent" placeholder="UC...">
-                </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">YouTube ライブ動画ID (チャット用)</label>
-                    <input type="text" id="inputVideoId" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-streamer-accent" placeholder="v=以降の文字列 (例: dQw4w9WgXcQ)">
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3">
-                <button id="btnCancelSettings" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 transition">キャンセル</button>
-                <button id="btnSaveSettings" class="px-4 py-2 rounded bg-streamer-accent hover:bg-violet-600 transition font-bold text-white shadow-lg">保存して接続</button>
-            </div>
-
-            <!-- URL Sharing Feature -->
-            <div class="mt-6 pt-4 border-t border-gray-700">
-                <h3 class="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-link"></i> 設定をURLで共有する
-                </h3>
-                <p class="text-xs text-gray-500 mb-3 leading-relaxed">
-                    現在の入力内容を含むURLを生成します。チームメンバーに共有する際に便利です。
-                </p>
-                <div class="flex items-center gap-2 mb-3">
-                    <input type="checkbox" id="checkShareApiKey" class="rounded bg-gray-900 border-gray-600 cursor-pointer">
-                    <label for="checkShareApiKey" class="text-xs text-red-400 cursor-pointer hover:text-red-300 transition">
-                        APIキーも含める（※悪用されるリスクがあるため、信頼できる相手のみ推奨）
-                    </label>
-                </div>
-                <button id="btnCopyUrl" class="w-full px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 border border-gray-600 transition text-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-copy text-gray-400"></i> 共有URLをコピー
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <nav class="glass-panel px-4 py-3 flex justify-between items-center z-10 border-b border-gray-800">
+    <!-- ヘッダー -->
+    <header class="bg-gray-800 border-b border-gray-700 py-3 px-6 flex justify-between items-center shadow-md">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded bg-streamer-accent flex items-center justify-center shadow-lg shadow-violet-500/30">
-                <i class="fa-brands fa-youtube text-white"></i>
+            <div class="bg-blue-600 text-white p-2 rounded-lg shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"></path><path d="m10 15 5-3-5-3z"></path></svg>
             </div>
-            <h1 class="font-bold text-lg tracking-wide">Streamer<span class="text-streamer-accent">Dash</span></h1>
-            <div id="connectionStatus" class="ml-4 px-3 py-1 rounded-full text-xs font-semibold bg-gray-700/50 text-gray-300 flex items-center gap-2 border border-gray-600">
-                <span class="w-2 h-2 rounded-full bg-gray-400 inline-block" id="statusDot"></span>
-                <span id="statusText">未接続</span>
-            </div>
+            <h1 class="text-xl font-bold tracking-tight">Streamer<span class="text-blue-400">Dash</span></h1>
+            <span id="connectionStatus" class="ml-4 px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-700 text-gray-300 flex items-center gap-1.5 border border-gray-600">
+                <span class="w-1.5 h-1.5 rounded-full bg-gray-400" id="statusIndicator"></span>
+                未接続
+            </span>
         </div>
-        <div>
-            <button id="btnOpenSettings" class="text-gray-300 hover:text-white transition px-4 py-2 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-500 shadow-sm flex items-center gap-2">
-                <i class="fa-solid fa-sliders"></i> <span class="hidden sm:inline">設定</span>
-            </button>
-        </div>
-    </nav>
+    </header>
 
-    <!-- AIを消したため 4カラム -> 3カラム (lg:grid-cols-3) に変更 -->
-    <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
+    <!-- メインコンテンツ -->
+    <main class="flex-1 flex overflow-hidden p-4 gap-4 h-[calc(100vh-65px)]">
         
-        <!-- Left Column: Stats & Tools (Col span 1) -->
-        <div class="col-span-1 flex flex-col gap-4 overflow-y-auto pr-1">
+        <!-- 左カラム：設定パネル -->
+        <div class="w-80 flex flex-col gap-4">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5 flex-shrink-0">
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    接続設定
+                </h2>
+                
+                <div id="errorAlert" class="hidden mb-4 p-3 bg-red-900/50 border border-red-500 rounded-lg text-sm text-red-200">
+                    <!-- エラーメッセージがここに入ります -->
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">YouTube APIキー</label>
+                        <input type="password" id="youtubeApiKey" placeholder="AIza..." class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">チャンネルID (登録者数用)</label>
+                        <input type="text" id="channelId" placeholder="UC..." class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1 flex justify-between">
+                            <span>ライブ動画ID または URL (コメント用)</span>
+                        </label>
+                        <input type="text" id="videoId" placeholder="ID または https://..." class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                    </div>
+                    <button id="applyBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex justify-center items-center gap-2">
+                        適用して再接続
+                    </button>
+                </div>
+            </div>
             
-            <!-- Real-time Subscriber Counter -->
-            <div class="glass-panel rounded-xl p-5 border border-gray-700 relative overflow-hidden group">
-                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition duration-500">
-                    <i class="fa-solid fa-users text-7xl"></i>
+            <!-- メモ帳パネル -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 flex flex-col flex-1 min-h-0">
+                <div class="p-3 border-b border-gray-700 flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        進行メモ
+                    </h2>
+                    <button id="clearMemoBtn" class="text-xs text-gray-500 hover:text-gray-300">クリア</button>
                 </div>
-                <h3 class="text-gray-400 text-sm font-semibold mb-1 uppercase tracking-wider">チャンネル登録者数</h3>
-                <div class="flex items-end gap-2">
-                    <span id="subCountDisplay" class="text-5xl font-bold text-white tracking-tighter">---</span>
-                    <span class="text-gray-500 font-medium mb-1">人</span>
+                <textarea id="scratchpad" class="flex-1 w-full bg-transparent border-none p-4 text-sm text-gray-200 resize-none focus:outline-none" placeholder="ここに自由にメモを書き込めます。&#13;&#10;ショートカットキーでの記録もここに追加されます。"></textarea>
+            </div>
+        </div>
+
+        <!-- 中央カラム：統計・チャット -->
+        <div class="flex-1 flex flex-col gap-4 min-w-0">
+            <!-- 統計情報パネル -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm relative overflow-hidden flex-shrink-0">
+                <!-- 背景アイコン装飾 -->
+                <svg class="absolute -bottom-4 -right-4 w-32 h-32 text-gray-700 opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                
+                <div class="flex justify-between items-start">
+                    <div class="grid grid-cols-2 gap-8 relative z-10 w-full">
+                        <div>
+                            <p class="text-sm text-gray-400 font-medium mb-1">チャンネル登録者数</p>
+                            <h3 id="subscriberCount" class="text-4xl font-bold text-white tracking-tight">-</h3>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-400 font-medium mb-1">配信時間</p>
+                            <h3 id="streamUptime" class="text-4xl font-bold text-blue-400 tracking-tight font-mono">00:00:00</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-400">現在の設定をURLとして保存・共有できます</span>
+                        <button id="copyLinkBtn" class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-3 rounded flex items-center gap-1 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                            設定URLをコピー
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Stream Timer -->
-            <div class="glass-panel rounded-xl p-5 border border-gray-700">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-gray-400 text-sm font-semibold uppercase tracking-wider">配信時間 (Uptime)</h3>
-                    <div id="liveIndicator" class="w-3 h-3 rounded-full bg-red-500 pulse-live hidden"></div>
+            <!-- コメントパネル -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 flex flex-col flex-1 min-h-0">
+                <div class="px-5 py-3 border-b border-gray-700">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        ライブチャット
+                    </h2>
                 </div>
-                <div id="timerDisplay" class="text-4xl font-bold text-white text-center tracking-widest font-mono mb-4 bg-gray-900/50 rounded py-2">
-                    00:00:00
-                </div>
-                <div class="flex justify-center gap-2">
-                    <button id="btnStartTimer" class="flex-1 bg-green-600/90 hover:bg-green-500 text-white py-2 rounded font-semibold transition border border-green-700 shadow-lg">
-                        <i class="fa-solid fa-play mr-1"></i> 開始
-                    </button>
-                    <button id="btnStopTimer" class="flex-1 bg-red-600/90 hover:bg-red-500 text-white py-2 rounded font-semibold transition border border-red-700 shadow-lg hidden">
-                        <i class="fa-solid fa-stop mr-1"></i> 終了
-                    </button>
-                    <button id="btnResetTimer" class="px-4 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded transition border border-gray-600" title="リセット">
-                        <i class="fa-solid fa-rotate-right"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Audio Visualizer -->
-            <div class="glass-panel rounded-xl p-5 border border-gray-700 flex-1 flex flex-col min-h-[200px]">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-gray-400 text-sm font-semibold uppercase tracking-wider">マイク入力レベル</h3>
-                    <button id="btnStartAudio" class="text-xs bg-streamer-accent hover:bg-violet-600 px-3 py-1.5 rounded transition text-white shadow-md">
-                        <i class="fa-solid fa-microphone"></i> 接続
-                    </button>
-                </div>
-                <div class="flex-1 bg-gray-900 rounded-lg border border-gray-800 relative overflow-hidden flex items-center justify-center">
-                    <canvas id="audioCanvas" class="absolute inset-0 w-full h-full"></canvas>
-                    <div id="audioOverlay" class="text-gray-500 text-xs z-10 pointer-events-none flex flex-col items-center gap-2">
-                        <i class="fa-solid fa-microphone-lines-slash text-2xl opacity-50"></i>
-                        <span>マイクを接続してください</span>
+                <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
+                    <!-- チャットメッセージがここに追加されます -->
+                    <div class="text-gray-500 text-sm text-center mt-10">
+                        設定を入力して接続すると、ここにコメントが表示されます
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Middle & Right Column: Live Comment Viewer (Col span 2) -->
-        <div class="col-span-1 lg:col-span-2 glass-panel rounded-xl border border-gray-700 flex flex-col overflow-hidden relative shadow-2xl">
-            <div class="p-3 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
-                <h2 class="font-bold text-gray-200 flex items-center gap-2">
-                    <i class="fa-solid fa-comments text-blue-400"></i> ライブコメント
+        <!-- 右カラム：ショートカットパネル -->
+        <div class="w-72 flex flex-col gap-4">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5 flex flex-col h-full">
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                    ショートカット
                 </h2>
-                <div class="flex gap-2">
-                    <button id="btnAutoScroll" class="text-xs px-3 py-1.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/40 transition flex items-center gap-1">
-                        <i class="fa-solid fa-arrow-down-up-across-line"></i> 自動スクロール: ON
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- ボタン群 -->
+                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="recordTimestamp()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span class="text-xs font-bold">タイムスタンプ</span>
+                    </button>
+                    
+                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="copyToClipboard('初見さんいらっしゃい！ゆっくりしていってね。')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+                        <span class="text-xs font-bold">挨拶コピー</span>
+                    </button>
+                    
+                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="copyToClipboard('チャンネル登録・高評価よろしくお願いします！')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                        <span class="text-xs font-bold">登録お願い</span>
+                    </button>
+                    
+                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="addMemoCheckbox()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                        <span class="text-xs font-bold">Todo追加</span>
                     </button>
                 </div>
-            </div>
-            
-            <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111827]">
-                <div class="text-center text-gray-500 text-sm py-20 flex flex-col items-center gap-4" id="chatPlaceholder">
-                    <i class="fa-brands fa-youtube text-6xl opacity-30 block"></i>
-                    <p>右上の「設定」からAPIキーと動画IDを入力して<br>チャットに接続してください</p>
+                
+                <!-- カスタム用ヒント -->
+                <div class="mt-auto pt-4 border-t border-gray-700 text-xs text-gray-500">
+                    ※ボタンのテキストやコピー内容はHTMLコードを編集して好きな文章に変更できます。
                 </div>
             </div>
-            
-            <button id="btnScrollToBottom" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-blue-600/90 text-white px-4 py-2 rounded-full shadow-lg hidden hover:bg-blue-500 transition z-10 flex items-center gap-2 backdrop-blur-sm border border-blue-400/30">
-                <i class="fa-solid fa-arrow-down"></i> 最新のコメントを見る
-            </button>
         </div>
-
     </main>
 
     <script>
-        const state = {
-            apiKey: '',
-            channelId: '',
-            videoId: '',
-            liveChatId: '',
-            
-            isTimerRunning: false,
-            timerStartTime: 0,
-            timerInterval: null,
-            timerElapsedTime: 0,
-            
-            isChatPolling: false,
-            chatNextPageToken: '',
-            chatPollingInterval: null,
-            chatDelayMillis: 5000, 
-            
-            isSubPolling: false,
-            subPollingInterval: null,
-            
-            autoScroll: true,
-            
-            audioContext: null,
-            analyser: null,
-            micStream: null,
-            animationFrameId: null
-        };
+        // API通信用変数
+        let youtubePollingInterval = null;
+        let subscriberPollingInterval = null;
+        let uptimeInterval = null;
+        let activeLiveChatId = null;
+        let nextPageToken = '';
+        let isYouTubeConnected = false;
 
-        const els = {
-            toastContainer: document.getElementById('toastContainer'),
-            settingsModal: document.getElementById('settingsModal'),
-            inputApiKey: document.getElementById('inputApiKey'),
-            inputChannelId: document.getElementById('inputChannelId'),
-            inputVideoId: document.getElementById('inputVideoId'),
-            checkShareApiKey: document.getElementById('checkShareApiKey'),
-            btnCopyUrl: document.getElementById('btnCopyUrl'),
-            
-            statusDot: document.getElementById('statusDot'),
-            statusText: document.getElementById('statusText'),
-            
-            subCountDisplay: document.getElementById('subCountDisplay'),
-            
-            timerDisplay: document.getElementById('timerDisplay'),
-            btnStartTimer: document.getElementById('btnStartTimer'),
-            btnStopTimer: document.getElementById('btnStopTimer'),
-            btnResetTimer: document.getElementById('btnResetTimer'),
-            liveIndicator: document.getElementById('liveIndicator'),
-            
-            chatContainer: document.getElementById('chatContainer'),
-            chatPlaceholder: document.getElementById('chatPlaceholder'),
-            btnAutoScroll: document.getElementById('btnAutoScroll'),
-            btnScrollToBottom: document.getElementById('btnScrollToBottom'),
-            
-            btnStartAudio: document.getElementById('btnStartAudio'),
-            audioCanvas: document.getElementById('audioCanvas'),
-            audioOverlay: document.getElementById('audioOverlay'),
-        };
+        // UI要素
+        const statusIndicator = document.getElementById('statusIndicator');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const errorAlert = document.getElementById('errorAlert');
+        const chatContainer = document.getElementById('chatContainer');
+        const subscriberCount = document.getElementById('subscriberCount');
+        const streamUptime = document.getElementById('streamUptime');
+        
+        const apiKeyInput = document.getElementById('youtubeApiKey');
+        const channelIdInput = document.getElementById('channelId');
+        const videoIdInput = document.getElementById('videoId');
+        const scratchpad = document.getElementById('scratchpad');
 
-        function showToast(message, type = 'info') {
-            const toast = document.createElement('div');
-            let bgColor, icon;
-            switch(type) {
-                case 'success': bgColor = 'bg-green-600'; icon = 'fa-check-circle'; break;
-                case 'error': bgColor = 'bg-red-600'; icon = 'fa-triangle-exclamation'; break;
-                case 'warning': bgColor = 'bg-yellow-600'; icon = 'fa-circle-exclamation'; break;
-                default: bgColor = 'bg-blue-600'; icon = 'fa-info-circle'; break;
+        // URLパラメータ処理
+        function updateSettingsFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('apiKey')) apiKeyInput.value = params.get('apiKey');
+            if (params.has('channelId')) channelIdInput.value = params.get('channelId');
+            if (params.has('videoId')) videoIdInput.value = params.get('videoId');
+        }
+
+        function generateShareUrl() {
+            const params = new URLSearchParams();
+            if (apiKeyInput.value) params.set('apiKey', apiKeyInput.value);
+            if (channelIdInput.value) params.set('channelId', channelIdInput.value);
+            if (videoIdInput.value) params.set('videoId', videoIdInput.value);
+            
+            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+            return url;
+        }
+
+        // YouTube URLから動画IDを抽出する関数
+        function extractVideoId(input) {
+            if (!input) return '';
+            // youtu.be/xxx, ?v=xxx, &v=xxx, embed/xxx などのパターンからIDを抽出
+            const match = input.match(/(?:youtu\.be\/|v=|\/v\/|\/embed\/)([A-Za-z0-9_-]{11})/);
+            return match ? match[1] : input.trim();
+        }
+
+        // コピー機能
+        document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+            const url = generateShareUrl();
+            await copyToClipboard(url, '設定URL');
+        });
+
+        async function copyToClipboard(text, label = 'テキスト') {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(`${label}をコピーしました`);
+            } catch (err) {
+                console.error('コピー失敗:', err);
+                showToast('コピーに失敗しました', true);
             }
-            
-            toast.className = `${bgColor} text-white px-4 py-3 rounded shadow-lg flex items-center gap-3 transform transition-all duration-300 translate-x-full opacity-0 max-w-sm pointer-events-auto`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span class="text-sm font-medium">${message}</span>`;
-            
-            els.toastContainer.appendChild(toast);
-            
-            requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
-            
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded shadow-lg text-sm transition-opacity duration-300 ${isError ? 'bg-red-600' : 'bg-green-600'} text-white z-50`;
+            toast.innerText = message;
+            document.body.appendChild(toast);
             setTimeout(() => {
-                toast.classList.add('translate-x-full', 'opacity-0');
+                toast.style.opacity = '0';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        function parseUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            let hasParams = false;
-
-            if (params.has('apiKey')) {
-                state.apiKey = params.get('apiKey');
-                els.inputApiKey.value = state.apiKey;
-                hasParams = true;
-            }
-            if (params.has('channelId')) {
-                state.channelId = params.get('channelId');
-                els.inputChannelId.value = state.channelId;
-                hasParams = true;
-            }
-            if (params.has('videoId')) {
-                state.videoId = params.get('videoId');
-                els.inputVideoId.value = state.videoId;
-                hasParams = true;
-            }
-            return hasParams;
+        // ショートカット機能
+        function recordTimestamp() {
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            scratchpad.value += `\n[${timeStr}] ★ハイライト`;
+            scratchpad.scrollTop = scratchpad.scrollHeight;
+            showToast('タイムスタンプをメモに記録しました');
         }
 
-        function loadSettings() {
-            // Priority: URL Params > LocalStorage
-            const hasUrlParams = parseUrlParams();
-
-            if (!hasUrlParams) {
-                state.apiKey = localStorage.getItem('ytApiKey') || '';
-                state.channelId = localStorage.getItem('ytChannelId') || '';
-                state.videoId = localStorage.getItem('ytVideoId') || '';
-                
-                els.inputApiKey.value = state.apiKey;
-                els.inputChannelId.value = state.channelId;
-                els.inputVideoId.value = state.videoId;
-            } else {
-                // If URL params existed, save them to local storage immediately
-                localStorage.setItem('ytApiKey', state.apiKey);
-                localStorage.setItem('ytChannelId', state.channelId);
-                localStorage.setItem('ytVideoId', state.videoId);
-                
-                // Clear URL to keep it clean after reading
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
+        function addMemoCheckbox() {
+            scratchpad.value += `\n□ `;
+            scratchpad.scrollTop = scratchpad.scrollHeight;
+            scratchpad.focus();
         }
 
-        document.getElementById('btnSaveSettings').addEventListener('click', async () => {
-            state.apiKey = els.inputApiKey.value.trim();
-            state.channelId = els.inputChannelId.value.trim();
-            state.videoId = els.inputVideoId.value.trim();
-            
-            localStorage.setItem('ytApiKey', state.apiKey);
-            localStorage.setItem('ytChannelId', state.channelId);
-            localStorage.setItem('ytVideoId', state.videoId);
-            
-            els.settingsModal.classList.add('hidden');
-            showToast('設定を保存しました', 'success');
-            
-            await initYouTubeConnection();
+        document.getElementById('clearMemoBtn').addEventListener('click', () => {
+            if (confirm('メモをクリアしますか？')) {
+                scratchpad.value = '';
+            }
         });
 
-        document.getElementById('btnOpenSettings').addEventListener('click', () => els.settingsModal.classList.remove('hidden'));
-        document.getElementById('btnCancelSettings').addEventListener('click', () => els.settingsModal.classList.add('hidden'));
-
-        els.btnCopyUrl.addEventListener('click', () => {
-            // Get current inputs directly from DOM
-            const cId = els.inputChannelId.value.trim();
-            const vId = els.inputVideoId.value.trim();
-            const aKey = els.inputApiKey.value.trim();
-            const includeKey = els.checkShareApiKey.checked;
-
-            if (!cId && !vId && (!includeKey || !aKey)) {
-                showToast('共有する設定が入力されていません', 'warning');
+        // 配信時間（アップタイム）タイマー
+        function startUptimeTimer(startTimeStr) {
+            clearInterval(uptimeInterval);
+            if (!startTimeStr) {
+                streamUptime.innerText = "未開始";
                 return;
             }
-
-            const url = new URL(window.location.href);
-            url.search = ''; // Clear existing params
             
-            if (cId) url.searchParams.set('channelId', cId);
-            if (vId) url.searchParams.set('videoId', vId);
-            if (includeKey && aKey) url.searchParams.set('apiKey', aKey);
-
-            const shareUrl = url.toString();
-
-            try {
-                // Compatible copy method for iframes/older browsers
-                const textArea = document.createElement("textarea");
-                textArea.value = shareUrl;
-                textArea.style.position = "fixed"; 
-                textArea.style.opacity = "0";
-                document.body.appendChild(textArea);
-                textArea.select();
-                const successful = document.execCommand("copy");
-                textArea.remove();
-
-                if (successful) {
-                    showToast('共有URLをコピーしました！', 'success');
-                } else {
-                    throw new Error('Copy command failed');
+            const startTime = new Date(startTimeStr).getTime();
+            uptimeInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const diff = now - startTime;
+                
+                if (diff < 0) {
+                    streamUptime.innerText = "開始前";
+                    return;
                 }
-            } catch (err) {
-                console.error('Fallback copy failed:', err);
-                showToast('コピーに失敗しました。', 'error');
-            }
-        });
+                
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                streamUptime.innerText = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        }
 
-
-        function updateConnectionStatus(isConnected, message) {
-            if (isConnected) {
-                els.statusDot.className = 'w-2 h-2 rounded-full inline-block bg-streamer-success pulse-live';
-                els.statusText.textContent = message || '接続済み';
+        // APIステータスUI
+        function setStatus(status, message = null) {
+            errorAlert.classList.add('hidden');
+            if (status === 'connected') {
+                statusIndicator.className = 'w-1.5 h-1.5 rounded-full bg-green-400';
+                connectionStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>接続済`;
+                connectionStatus.className = 'ml-4 px-2.5 py-1 text-xs font-semibold rounded-full bg-green-900/30 text-green-400 flex items-center gap-1.5 border border-green-800';
+            } else if (status === 'error') {
+                statusIndicator.className = 'w-1.5 h-1.5 rounded-full bg-red-500';
+                connectionStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>エラー`;
+                connectionStatus.className = 'ml-4 px-2.5 py-1 text-xs font-semibold rounded-full bg-red-900/30 text-red-400 flex items-center gap-1.5 border border-red-800';
+                if (message) {
+                    errorAlert.innerText = message;
+                    errorAlert.classList.remove('hidden');
+                }
             } else {
-                els.statusDot.className = 'w-2 h-2 rounded-full inline-block bg-gray-400';
-                els.statusText.textContent = message || '未接続';
+                statusIndicator.className = 'w-1.5 h-1.5 rounded-full bg-gray-400';
+                connectionStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>未接続`;
+                connectionStatus.className = 'ml-4 px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-700 text-gray-300 flex items-center gap-1.5 border border-gray-600';
             }
         }
 
+        // YouTube API 接続・データ取得
         async function initYouTubeConnection() {
-            if (!state.apiKey) {
-                showToast('APIキーが設定されていません', 'warning');
+            // 前回のポーリングをクリア
+            if (youtubePollingInterval) clearInterval(youtubePollingInterval);
+            if (subscriberPollingInterval) clearInterval(subscriberPollingInterval);
+            if (uptimeInterval) clearInterval(uptimeInterval);
+            chatContainer.innerHTML = '';
+            streamUptime.innerText = '00:00:00';
+            isYouTubeConnected = false;
+            nextPageToken = '';
+
+            const apiKey = apiKeyInput.value.trim();
+            const channelId = channelIdInput.value.trim();
+            const videoInputStr = videoIdInput.value.trim();
+            
+            // URLだった場合はIDを抽出
+            const videoId = extractVideoId(videoInputStr);
+
+            if (!apiKey) {
+                setStatus('error', 'APIキーを入力してください。');
                 return;
             }
 
-            stopYouTubePolling();
-            updateConnectionStatus(true, '接続試行中...');
-
-            let hasError = false;
-
-            if (state.channelId) {
-                try {
-                    await fetchSubscriberCount();
-                    startSubPolling();
-                } catch (e) {
-                    showToast('登録者数の取得に失敗しました', 'error');
-                    console.error(e);
-                    hasError = true;
+            try {
+                // 1. チャンネル登録者数の取得 (初期)
+                if (channelId) {
+                    await fetchSubscriberCount(channelId, apiKey);
+                    subscriberPollingInterval = setInterval(() => fetchSubscriberCount(channelId, apiKey), 60000); // 1分更新
                 }
-            }
 
-            if (state.videoId) {
-                try {
-                    const chatId = await getLiveChatId(state.videoId);
-                    if (chatId) {
-                        state.liveChatId = chatId;
-                        els.chatPlaceholder.style.display = 'none';
-                        els.chatContainer.innerHTML = ''; 
-                        await fetchLiveChat(); 
-                        startChatPolling();
+                // 2. ライブチャットIDと配信開始時間の取得
+                if (videoId) {
+                    const videoDetails = await getLiveVideoDetails(videoId, apiKey);
+                    activeLiveChatId = videoDetails.activeLiveChatId;
+                    
+                    // 配信開始時刻をもとにタイマー起動
+                    if (videoDetails.actualStartTime) {
+                        startUptimeTimer(videoDetails.actualStartTime);
                     } else {
-                        throw new Error("Live chat ID not found for this video.");
+                        streamUptime.innerText = "未開始";
                     }
-                } catch (e) {
-                    showToast('チャットへの接続に失敗しました', 'error');
-                    console.error(e);
-                    hasError = true;
+
+                    setStatus('connected');
+                    isYouTubeConnected = true;
+
+                    // コメント初回取得＆ポーリング開始
+                    await fetchLiveChat(apiKey);
+                    youtubePollingInterval = setInterval(() => fetchLiveChat(apiKey), 5000); // 5秒更新
+                } else {
+                    setStatus('connected');
+                    const msg = document.createElement('div');
+                    msg.className = "text-gray-500 text-sm text-center mt-10";
+                    msg.innerText = "動画ID（またはURL）が未設定のため、コメントは取得されません。";
+                    chatContainer.appendChild(msg);
                 }
-            }
 
-            if (!hasError && (state.channelId || state.videoId)) {
-                updateConnectionStatus(true, 'オンライン');
-                showToast('YouTubeに接続しました', 'success');
-            } else if (!state.channelId && !state.videoId) {
-                updateConnectionStatus(false, '待機中');
+            } catch (error) {
+                console.error("YouTube connection error:", error);
+                
+                let errorMsg = '接続に失敗しました。';
+                if (error.message.includes('403')) {
+                    errorMsg = 'APIキーがブロックされました(403)。Google Cloud Consoleで「YouTube Data API v3」が有効になっているか、APIキーの制限設定を見直してください。';
+                } else if (error.message.includes('400')) {
+                    errorMsg = 'APIキーまたはIDの形式が不正です。不要な文字が入っていないか確認してください。';
+                } else {
+                    errorMsg = error.message;
+                }
+                
+                setStatus('error', errorMsg);
+            }
+        }
+
+        async function fetchSubscriberCount(channelId, apiKey) {
+            const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${apiKey}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Sub fetch error: ${response.status}`);
+            
+            const data = await response.json();
+            if (data.items && data.items.length > 0) {
+                const count = data.items[0].statistics.subscriberCount;
+                subscriberCount.innerText = Number(count).toLocaleString();
+            }
+        }
+
+        async function getLiveVideoDetails(videoId, apiKey) {
+            const url = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${apiKey}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Video fetch HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.items && data.items.length > 0 && data.items[0].liveStreamingDetails) {
+                return data.items[0].liveStreamingDetails;
             } else {
-                updateConnectionStatus(false, 'エラー発生');
+                throw new Error('指定された動画のライブ配信情報が見つかりません。ライブ中かどうか確認してください。');
             }
         }
 
-        async function fetchSubscriberCount() {
-            const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${state.channelId}&key=${state.apiKey}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            
-            if (data.items && data.items.length > 0) {
-                const subCount = data.items[0].statistics.subscriberCount;
-                els.subCountDisplay.textContent = parseInt(subCount).toLocaleString();
-            }
-        }
+        async function fetchLiveChat(apiKey) {
+            if (!activeLiveChatId) return;
 
-        async function getLiveChatId(videoId) {
-            const url = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${state.apiKey}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            
-            if (data.items && data.items.length > 0) {
-                return data.items[0].liveStreamingDetails?.activeLiveChatId || null;
-            }
-            return null;
-        }
-
-        async function fetchLiveChat() {
-            let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${state.liveChatId}&part=snippet,authorDetails&key=${state.apiKey}`;
-            if (state.chatNextPageToken) {
-                url += `&pageToken=${state.chatNextPageToken}`;
+            let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${activeLiveChatId}&part=snippet,authorDetails&key=${apiKey}`;
+            if (nextPageToken) {
+                url += `&pageToken=${nextPageToken}`;
             }
 
             try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error('Network response was not ok');
-                const data = await res.json();
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Live chat fetch error');
                 
-                state.chatNextPageToken = data.nextPageToken || state.chatNextPageToken;
-                state.chatDelayMillis = data.pollingIntervalMillis || 5000;
+                const data = await response.json();
+                
+                // 次のページトークンを更新
+                nextPageToken = data.nextPageToken;
 
                 if (data.items && data.items.length > 0) {
+                    // 初回読み込み時は過去コメントで埋まらないよう最新10件くらいに絞るなどの処理も可能
+                    // 今回はシンプルに全部追加
                     data.items.forEach(item => {
                         appendChatMessage(item);
                     });
+                    
+                    // 自動スクロール
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
                 }
             } catch (error) {
-                console.error("Chat polling error:", error);
+                console.error('Error fetching live chat:', error);
             }
         }
 
         function appendChatMessage(item) {
-            const author = item.authorDetails.displayName;
-            const profileImageUrl = item.authorDetails.profileImageUrl;
+            const authorName = item.authorDetails.displayName;
+            const authorImg = item.authorDetails.profileImageUrl;
             const message = item.snippet.displayMessage;
-            const isSuperChat = item.snippet.type === 'superChatEvent';
+            const isOwner = item.authorDetails.isChatOwner;
             const isModerator = item.authorDetails.isChatModerator;
+            
+            let badgeHtml = '';
+            if (isOwner) badgeHtml = `<span class="ml-1 px-1.5 py-0.5 bg-yellow-500/20 text-yellow-500 text-[10px] rounded border border-yellow-500/50">主</span>`;
+            else if (isModerator) badgeHtml = `<span class="ml-1 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] rounded border border-blue-500/50">モデレーター</span>`;
 
             const msgDiv = document.createElement('div');
-            msgDiv.className = `chat-message-enter p-3 rounded-lg border flex gap-3 ${isSuperChat ? 'bg-orange-500/20 border-orange-500 text-orange-100' : 'bg-gray-800 border-gray-700'}`;
+            msgDiv.className = 'flex gap-3 hover:bg-gray-700/50 p-2 rounded transition-colors group';
             
-            const escapeHtml = (unsafe) => {
-                return (unsafe||'').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-            };
-            const escapedMsg = escapeHtml(message);
-
             msgDiv.innerHTML = `
-                <img src="${profileImageUrl}" alt="${author}" class="w-8 h-8 rounded-full mt-1 border border-gray-600" onerror="this.src='https://placehold.co/32x32/1e293b/8b5cf6?text=U'">
-                <div class="flex-1">
-                    <div class="flex justify-between items-start">
-                        <span class="text-xs font-bold ${isModerator ? 'text-blue-400' : 'text-gray-400'}">
-                            ${isModerator ? '<i class="fa-solid fa-wrench mr-1"></i> ' : ''}${escapeHtml(author)}
-                        </span>
+                <img src="${authorImg}" alt="avatar" class="w-8 h-8 rounded-full border border-gray-600">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-baseline">
+                        <span class="text-sm font-bold text-gray-300 truncate">${authorName}</span>
+                        ${badgeHtml}
                     </div>
-                    <div class="text-sm mt-1 leading-snug break-all text-gray-200">${escapedMsg}</div>
+                    <div class="text-sm text-gray-100 break-words mt-0.5 leading-relaxed">${message}</div>
                 </div>
             `;
             
-            els.chatContainer.appendChild(msgDiv);
-
-            if (state.autoScroll) {
-                els.chatContainer.scrollTop = els.chatContainer.scrollHeight;
-            }
+            chatContainer.appendChild(msgDiv);
         }
 
-        els.chatContainer.addEventListener('scroll', () => {
-            const isAtBottom = els.chatContainer.scrollHeight - els.chatContainer.scrollTop <= els.chatContainer.clientHeight + 50;
-            if (isAtBottom) {
-                state.autoScroll = true;
-                els.btnScrollToBottom.classList.add('hidden');
-                updateAutoScrollBtn();
-            } else if (state.autoScroll) {
-                state.autoScroll = false;
-                els.btnScrollToBottom.classList.remove('hidden');
-                updateAutoScrollBtn();
-            }
-        });
-
-        els.btnScrollToBottom.addEventListener('click', () => {
-            state.autoScroll = true;
-            els.chatContainer.scrollTop = els.chatContainer.scrollHeight;
-            els.btnScrollToBottom.classList.add('hidden');
-            updateAutoScrollBtn();
-        });
-
-        els.btnAutoScroll.addEventListener('click', () => {
-            state.autoScroll = !state.autoScroll;
-            if (state.autoScroll) els.chatContainer.scrollTop = els.chatContainer.scrollHeight;
-            updateAutoScrollBtn();
-        });
-
-        function updateAutoScrollBtn() {
-            if (state.autoScroll) {
-                els.btnAutoScroll.innerHTML = '<i class="fa-solid fa-arrow-down-up-across-line"></i> 自動スクロール: ON';
-                els.btnAutoScroll.className = 'text-xs px-3 py-1.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/40 transition flex items-center gap-1';
-            } else {
-                els.btnAutoScroll.innerHTML = '<i class="fa-solid fa-arrow-down-up-across-line"></i> 自動スクロール: OFF';
-                els.btnAutoScroll.className = 'text-xs px-3 py-1.5 rounded bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600 transition flex items-center gap-1';
-            }
-        }
-
-        function startSubPolling() {
-            if (state.subPollingInterval) clearInterval(state.subPollingInterval);
-            state.subPollingInterval = setInterval(fetchSubscriberCount, 10000); 
-        }
-
-        function startChatPolling() {
-            if (state.chatPollingInterval) clearTimeout(state.chatPollingInterval);
-            const poll = async () => {
-                if (state.liveChatId) {
-                    await fetchLiveChat();
-                }
-                state.chatPollingInterval = setTimeout(poll, state.chatDelayMillis);
-            };
-            state.chatPollingInterval = setTimeout(poll, state.chatDelayMillis);
-        }
-
-        function stopYouTubePolling() {
-            if (state.subPollingInterval) clearInterval(state.subPollingInterval);
-            if (state.chatPollingInterval) clearTimeout(state.chatPollingInterval);
-            state.subPollingInterval = null;
-            state.chatPollingInterval = null;
-        }
-
-        function formatTime(seconds) {
-            const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
-            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-            const s = (seconds % 60).toString().padStart(2, '0');
-            return `${h}:${m}:${s}`;
-        }
-
-        function updateTimerDisplay() {
-            els.timerDisplay.textContent = formatTime(state.timerElapsedTime);
-        }
-
-        els.btnStartTimer.addEventListener('click', () => {
-            if (state.isTimerRunning) return;
-            state.isTimerRunning = true;
-            state.timerStartTime = Date.now() - (state.timerElapsedTime * 1000);
-            
-            els.btnStartTimer.classList.add('hidden');
-            els.btnStopTimer.classList.remove('hidden');
-            els.liveIndicator.classList.remove('hidden');
-            
-            state.timerInterval = setInterval(() => {
-                state.timerElapsedTime = Math.floor((Date.now() - state.timerStartTime) / 1000);
-                updateTimerDisplay();
-            }, 1000);
-        });
-
-        els.btnStopTimer.addEventListener('click', () => {
-            state.isTimerRunning = false;
-            clearInterval(state.timerInterval);
-            
-            els.btnStopTimer.classList.add('hidden');
-            els.btnStartTimer.classList.remove('hidden');
-            els.liveIndicator.classList.add('hidden');
-        });
-
-        els.btnResetTimer.addEventListener('click', () => {
-            state.isTimerRunning = false;
-            clearInterval(state.timerInterval);
-            state.timerElapsedTime = 0;
-            updateTimerDisplay();
-            
-            els.btnStopTimer.classList.add('hidden');
-            els.btnStartTimer.classList.remove('hidden');
-            els.liveIndicator.classList.add('hidden');
-        });
-
-        // Audio Visualizer
-        els.btnStartAudio.addEventListener('click', async () => {
-            if (state.audioContext) {
-                cancelAnimationFrame(state.animationFrameId);
-                if(state.micStream) state.micStream.getTracks().forEach(track => track.stop());
-                state.audioContext.close();
-                state.audioContext = null;
-                
-                els.btnStartAudio.innerHTML = '<i class="fa-solid fa-microphone"></i> 接続';
-                els.btnStartAudio.className = 'text-xs bg-streamer-accent hover:bg-violet-600 px-3 py-1.5 rounded transition text-white shadow-md';
-                els.audioOverlay.style.display = 'flex';
-                
-                const ctx = els.audioCanvas.getContext('2d');
-                ctx.clearRect(0, 0, els.audioCanvas.width, els.audioCanvas.height);
-                return;
-            }
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                state.micStream = stream;
-                
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                state.audioContext = new AudioContext();
-                
-                const source = state.audioContext.createMediaStreamSource(stream);
-                state.analyser = state.audioContext.createAnalyser();
-                
-                state.analyser.fftSize = 256;
-                const bufferLength = state.analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-                
-                source.connect(state.analyser);
-                
-                els.btnStartAudio.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> 切断';
-                els.btnStartAudio.className = 'text-xs bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded transition text-white shadow-md';
-                els.audioOverlay.style.display = 'none';
-
-                const ctx = els.audioCanvas.getContext('2d');
-                const resizeCanvas = () => {
-                    const rect = els.audioCanvas.parentElement.getBoundingClientRect();
-                    els.audioCanvas.width = rect.width;
-                    els.audioCanvas.height = rect.height;
-                };
-                window.addEventListener('resize', resizeCanvas);
-                resizeCanvas();
-
-                const draw = () => {
-                    if (!state.audioContext) return;
-                    state.animationFrameId = requestAnimationFrame(draw);
-                    
-                    state.analyser.getByteFrequencyData(dataArray);
-                    
-                    ctx.fillStyle = 'rgb(17, 24, 39)'; 
-                    ctx.fillRect(0, 0, els.audioCanvas.width, els.audioCanvas.height);
-                    
-                    const barWidth = (els.audioCanvas.width / bufferLength) * 2.5;
-                    let barHeight;
-                    let x = 0;
-                    
-                    for (let i = 0; i < bufferLength; i++) {
-                        barHeight = dataArray[i];
-                        
-                        const gradient = ctx.createLinearGradient(0, els.audioCanvas.height, 0, 0);
-                        gradient.addColorStop(0, '#8b5cf6');
-                        gradient.addColorStop(1, '#3b82f6'); 
-                        
-                        ctx.fillStyle = gradient;
-                        const displayHeight = (barHeight / 255) * els.audioCanvas.height;
-                        
-                        ctx.fillRect(x, els.audioCanvas.height - displayHeight, barWidth, displayHeight);
-                        x += barWidth + 1;
-                    }
-                };
-                
-                draw();
-                showToast('マイクに接続しました', 'success');
-                
-            } catch (err) {
-                console.error('Error accessing microphone:', err);
-                showToast('マイクのアクセスが拒否されたか、エラーが発生しました', 'error');
-            }
-        });
-
+        // 初期化処理
+        document.getElementById('applyBtn').addEventListener('click', initYouTubeConnection);
+        
+        // ページ読み込み時
         window.addEventListener('DOMContentLoaded', () => {
-            loadSettings();
-            
-            if (state.apiKey && (state.channelId || state.videoId)) {
+            updateSettingsFromUrl();
+            if (apiKeyInput.value) {
+                // パラメータに設定があれば自動接続
                 initYouTubeConnection();
-            } else {
-                els.settingsModal.classList.remove('hidden');
             }
         });
-
     </script>
 </body>
 </html>
