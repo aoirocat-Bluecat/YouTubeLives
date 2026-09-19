@@ -30,6 +30,15 @@
             transform: translateY(4px);
             box-shadow: 0 0 0 #374151, 0 1px 2px rgba(0,0,0,0.3);
         }
+        
+        /* モーダル用アニメーション */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-animate {
+            animation: fadeIn 0.2s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col font-sans selection:bg-blue-500 selection:text-white">
@@ -52,16 +61,14 @@
     <main class="flex-1 flex overflow-hidden p-4 gap-4 h-[calc(100vh-65px)]">
         
         <!-- 左カラム：設定パネル -->
-        <div class="w-80 flex flex-col gap-4">
+        <div class="w-80 flex flex-col gap-4 overflow-y-auto pr-2">
             <div class="bg-gray-800 rounded-xl border border-gray-700 p-5 flex-shrink-0">
                 <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     接続設定
                 </h2>
                 
-                <div id="errorAlert" class="hidden mb-4 p-3 bg-red-900/50 border border-red-500 rounded-lg text-sm text-red-200">
-                    <!-- エラーメッセージがここに入ります -->
-                </div>
+                <div id="errorAlert" class="hidden mb-4 p-3 bg-red-900/50 border border-red-500 rounded-lg text-sm text-red-200"></div>
 
                 <div class="space-y-4">
                     <div>
@@ -85,15 +92,15 @@
             </div>
             
             <!-- メモ帳パネル -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 flex flex-col flex-1 min-h-0">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 flex flex-col flex-1 min-h-[300px]">
                 <div class="p-3 border-b border-gray-700 flex justify-between items-center">
                     <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                         進行メモ
                     </h2>
-                    <button id="clearMemoBtn" class="text-xs text-gray-500 hover:text-gray-300">クリア</button>
+                    <button id="clearMemoBtn" class="text-xs text-gray-500 hover:text-gray-300 px-2 py-1 bg-gray-700 rounded">クリア</button>
                 </div>
-                <textarea id="scratchpad" class="flex-1 w-full bg-transparent border-none p-4 text-sm text-gray-200 resize-none focus:outline-none" placeholder="ここに自由にメモを書き込めます。&#13;&#10;ショートカットキーでの記録もここに追加されます。"></textarea>
+                <textarea id="scratchpad" class="flex-1 w-full bg-transparent border-none p-4 text-sm text-gray-200 resize-none focus:outline-none leading-relaxed" placeholder="ここに自由にメモを書き込めます。&#13;&#10;ショートカットからの記録も追加されます。"></textarea>
             </div>
         </div>
 
@@ -101,7 +108,6 @@
         <div class="flex-1 flex flex-col gap-4 min-w-0">
             <!-- 統計情報パネル -->
             <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-sm relative overflow-hidden flex-shrink-0">
-                <!-- 背景アイコン装飾 -->
                 <svg class="absolute -bottom-4 -right-4 w-32 h-32 text-gray-700 opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 
                 <div class="flex justify-between items-start">
@@ -130,113 +136,86 @@
 
             <!-- コメントパネル -->
             <div class="bg-gray-800 rounded-xl border border-gray-700 flex flex-col flex-1 min-h-0">
-                <div class="px-5 py-3 border-b border-gray-700">
+                <div class="px-5 py-3 border-b border-gray-700 flex justify-between items-center">
                     <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         ライブチャット
                     </h2>
                 </div>
                 <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
-                    <!-- チャットメッセージがここに追加されます -->
-                    <div class="text-gray-500 text-sm text-center mt-10">
-                        設定を入力して接続すると、ここにコメントが表示されます
-                    </div>
+                    <div class="text-gray-500 text-sm text-center mt-10">設定を入力して接続すると、ここにコメントが表示されます</div>
                 </div>
             </div>
         </div>
 
         <!-- 右カラム：ショートカットパネル -->
-        <div class="w-72 flex flex-col gap-4">
-            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5 flex flex-col h-full">
-                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                    ショートカット
-                </h2>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <!-- ボタン群 -->
-                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="recordTimestamp()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        <span class="text-xs font-bold">タイムスタンプ</span>
-                    </button>
-                    
-                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="copyToClipboard('初見さんいらっしゃい！ゆっくりしていってね。')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
-                        <span class="text-xs font-bold">挨拶コピー</span>
-                    </button>
-                    
-                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="copyToClipboard('チャンネル登録・高評価よろしくお願いします！')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
-                        <span class="text-xs font-bold">登録お願い</span>
-                    </button>
-                    
-                    <button class="deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24" onclick="addMemoCheckbox()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-                        <span class="text-xs font-bold">Todo追加</span>
+        <div class="w-80 flex flex-col gap-4 overflow-y-auto">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-5 flex flex-col min-h-full">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                        ショートカット
+                    </h2>
+                    <button id="openEditBtn" class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2.5 rounded flex items-center gap-1 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        編集
                     </button>
                 </div>
                 
-                <!-- カスタム用ヒント -->
-                <div class="mt-auto pt-4 border-t border-gray-700 text-xs text-gray-500">
-                    ※ボタンのテキストやコピー内容はHTMLコードを編集して好きな文章に変更できます。
+                <div id="shortcutGrid" class="grid grid-cols-2 gap-3 pb-4">
+                    <!-- JavaScriptでボタンが動的に生成されます -->
                 </div>
             </div>
         </div>
     </main>
 
-    <script>
-        // API通信用変数
-        let youtubePollingInterval = null;
-        let subscriberPollingInterval = null;
-        let uptimeInterval = null;
-        let activeLiveChatId = null;
-        let nextPageToken = '';
-        let isYouTubeConnected = false;
-
-        // UI要素
-        const statusIndicator = document.getElementById('statusIndicator');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const errorAlert = document.getElementById('errorAlert');
-        const chatContainer = document.getElementById('chatContainer');
-        const subscriberCount = document.getElementById('subscriberCount');
-        const streamUptime = document.getElementById('streamUptime');
-        
-        const apiKeyInput = document.getElementById('youtubeApiKey');
-        const channelIdInput = document.getElementById('channelId');
-        const videoIdInput = document.getElementById('videoId');
-        const scratchpad = document.getElementById('scratchpad');
-
-        // URLパラメータ処理
-        function updateSettingsFromUrl() {
-            const params = new URLSearchParams(window.location.search);
-            if (params.has('apiKey')) apiKeyInput.value = params.get('apiKey');
-            if (params.has('channelId')) channelIdInput.value = params.get('channelId');
-            if (params.has('videoId')) videoIdInput.value = params.get('videoId');
-        }
-
-        function generateShareUrl() {
-            const params = new URLSearchParams();
-            if (apiKeyInput.value) params.set('apiKey', apiKeyInput.value);
-            if (channelIdInput.value) params.set('channelId', channelIdInput.value);
-            if (videoIdInput.value) params.set('videoId', videoIdInput.value);
+    <!-- ショートカット編集モーダル -->
+    <div id="shortcutModal" class="fixed inset-0 bg-black/80 hidden z-50 flex flex-col items-center justify-center p-4 modal-animate">
+        <div class="bg-gray-800 border border-gray-600 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-full overflow-hidden">
+            <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800 z-10">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    ショートカットのカスタマイズ
+                </h2>
+                <button id="closeEditBtn" class="text-gray-400 hover:text-white p-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
             
-            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-            return url;
-        }
+            <div class="p-4 overflow-y-auto flex-1 bg-gray-900/50" id="modalEditorList">
+                <!-- 編集用フォームリストがここに生成されます -->
+            </div>
+            
+            <div class="p-4 border-t border-gray-700 bg-gray-800 flex justify-between items-center z-10">
+                <button id="addNewShortcutBtn" class="text-sm bg-gray-700 hover:bg-gray-600 text-blue-400 font-bold py-2 px-4 rounded transition-colors flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    新しく追加
+                </button>
+                <div class="flex gap-2">
+                    <button id="cancelEditBtn" class="text-sm bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded transition-colors">キャンセル</button>
+                    <button id="saveEditBtn" class="text-sm bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded transition-colors shadow-lg">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        // YouTube URLから動画IDを抽出する関数
-        function extractVideoId(input) {
-            if (!input) return '';
-            // youtu.be/xxx, ?v=xxx, &v=xxx, embed/xxx などのパターンからIDを抽出
-            const match = input.match(/(?:youtu\.be\/|v=|\/v\/|\/embed\/)([A-Za-z0-9_-]{11})/);
-            return match ? match[1] : input.trim();
+    <script>
+        /* =========================================================================
+           ユーティリティ & 共通機能
+        ========================================================================= */
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 px-4 py-3 rounded shadow-lg text-sm font-bold transition-opacity duration-300 ${isError ? 'bg-red-600' : 'bg-green-600'} text-white z-[60] flex items-center gap-2`;
+            toast.innerHTML = isError ? 
+                `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>${message}` :
+                `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>${message}`;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
-
-        // コピー機能
-        document.getElementById('copyLinkBtn').addEventListener('click', async () => {
-            const url = generateShareUrl();
-            await copyToClipboard(url, '設定URL');
-        });
 
         async function copyToClipboard(text, label = 'テキスト') {
             try {
@@ -248,65 +227,286 @@
             }
         }
 
-        function showToast(message, isError = false) {
-            const toast = document.createElement('div');
-            toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded shadow-lg text-sm transition-opacity duration-300 ${isError ? 'bg-red-600' : 'bg-green-600'} text-white z-50`;
-            toast.innerText = message;
-            document.body.appendChild(toast);
+        /* =========================================================================
+           ショートカット機能管理
+        ========================================================================= */
+        const defaultShortcuts = [
+            { id: '1', label: 'タイムスタンプ', type: 'timestamp', value: '', color: '#60a5fa' },
+            { id: '2', label: '挨拶コピー', type: 'copy', value: '初見さんいらっしゃい！ゆっくりしていってね。', color: '#4ade80' },
+            { id: '3', label: '登録お願い', type: 'copy', value: 'チャンネル登録・高評価よろしくお願いします！', color: '#f472b6' },
+            { id: '4', label: 'Todo追加', type: 'memo', value: '□ ', color: '#a78bfa' }
+        ];
+
+        let shortcuts = [];
+        let editingShortcuts = []; // モーダルで編集中の一時データ
+
+        // ローカルストレージから読み込み
+        function loadShortcuts() {
+            try {
+                const stored = localStorage.getItem('streamerDashShortcuts');
+                if (stored) {
+                    shortcuts = JSON.parse(stored);
+                } else {
+                    shortcuts = [...defaultShortcuts];
+                }
+            } catch (e) {
+                shortcuts = [...defaultShortcuts];
+            }
+            renderShortcuts();
+        }
+
+        // SVGアイコンの生成
+        function getIconSvg(type, color) {
+            if (type === 'timestamp') {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+            } else if (type === 'memo') {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
+            } else {
+                // copy default
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>`;
+            }
+        }
+
+        // パネルにボタンを描画
+        function renderShortcuts() {
+            const grid = document.getElementById('shortcutGrid');
+            grid.innerHTML = '';
+            
+            if (shortcuts.length === 0) {
+                grid.innerHTML = `<div class="col-span-2 text-center text-xs text-gray-500 py-4">ショートカットがありません。<br>「編集」から追加してください。</div>`;
+                return;
+            }
+
+            shortcuts.forEach(sc => {
+                const btn = document.createElement('button');
+                btn.className = 'deck-btn bg-gray-700 hover:bg-gray-600 rounded-lg p-3 text-center flex flex-col items-center justify-center gap-2 text-white h-24 overflow-hidden';
+                btn.innerHTML = `
+                    ${getIconSvg(sc.type, sc.color)}
+                    <span class="text-xs font-bold leading-tight w-full truncate px-1">${sc.label}</span>
+                `;
+                
+                btn.onclick = () => {
+                    if (sc.type === 'timestamp') {
+                        const now = new Date();
+                        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                        scratchpad.value += `\n[${timeStr}] ${sc.label}`;
+                        scratchpad.scrollTop = scratchpad.scrollHeight;
+                        showToast(`タイムスタンプをメモに記録しました`);
+                    } else if (sc.type === 'copy') {
+                        copyToClipboard(sc.value, sc.label);
+                    } else if (sc.type === 'memo') {
+                        scratchpad.value += `\n${sc.value}`;
+                        scratchpad.scrollTop = scratchpad.scrollHeight;
+                        scratchpad.focus();
+                    }
+                };
+                grid.appendChild(btn);
+            });
+        }
+
+        /* モーダル関連処理 */
+        const modal = document.getElementById('shortcutModal');
+        const modalEditorList = document.getElementById('modalEditorList');
+
+        function openModal() {
+            editingShortcuts = JSON.parse(JSON.stringify(shortcuts)); // ディープコピー
+            renderEditorList();
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        function renderEditorList() {
+            modalEditorList.innerHTML = '';
+            
+            if (editingShortcuts.length === 0) {
+                modalEditorList.innerHTML = `<div class="text-center text-gray-500 py-8">ショートカットがありません。追加ボタンから作成してください。</div>`;
+                return;
+            }
+
+            editingShortcuts.forEach((sc, index) => {
+                const row = document.createElement('div');
+                row.className = 'bg-gray-800 p-4 rounded-lg mb-3 border border-gray-700 relative';
+                
+                // 色の選択肢
+                const colors = ['#60a5fa', '#4ade80', '#f472b6', '#a78bfa', '#fbbf24', '#f87171', '#9ca3af'];
+                const colorOptions = colors.map(c => 
+                    `<option value="${c}" ${sc.color === c ? 'selected' : ''}>${c}</option>`
+                ).join('');
+
+                const isCopyOrMemo = sc.type === 'copy' || sc.type === 'memo';
+
+                row.innerHTML = `
+                    <div class="flex justify-between items-start mb-3 gap-2">
+                        <div class="flex-1 grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">ボタン名</label>
+                                <input type="text" class="edit-label w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm focus:border-blue-500" value="${sc.label}">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-1">動作タイプ</label>
+                                <select class="edit-type w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm focus:border-blue-500">
+                                    <option value="copy" ${sc.type === 'copy' ? 'selected' : ''}>テキストをコピー</option>
+                                    <option value="memo" ${sc.type === 'memo' ? 'selected' : ''}>メモに追加</option>
+                                    <option value="timestamp" ${sc.type === 'timestamp' ? 'selected' : ''}>タイムスタンプ記録</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="delete-btn text-red-400 hover:bg-red-900/30 p-2 rounded transition-colors mt-5" title="削除">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="value-container ${isCopyOrMemo ? '' : 'hidden'}">
+                        <label class="block text-xs text-gray-400 mb-1">内容 (コピーするテキスト または メモする文字)</label>
+                        <input type="text" class="edit-value w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-sm focus:border-blue-500" value="${sc.value.replace(/"/g, '&quot;')}">
+                    </div>
+                    
+                    <!-- 隠しカラー用 (ランダムでアイコン色を変えるために保持) -->
+                    <input type="hidden" class="edit-color" value="${sc.color}">
+                `;
+
+                // イベントリスナーの追加
+                const labelInput = row.querySelector('.edit-label');
+                const typeSelect = row.querySelector('.edit-type');
+                const valueInput = row.querySelector('.edit-value');
+                const deleteBtn = row.querySelector('.delete-btn');
+                const valContainer = row.querySelector('.value-container');
+
+                labelInput.addEventListener('input', (e) => { editingShortcuts[index].label = e.target.value; });
+                valueInput.addEventListener('input', (e) => { editingShortcuts[index].value = e.target.value; });
+                
+                typeSelect.addEventListener('change', (e) => {
+                    editingShortcuts[index].type = e.target.value;
+                    if (e.target.value === 'copy' || e.target.value === 'memo') {
+                        valContainer.classList.remove('hidden');
+                    } else {
+                        valContainer.classList.add('hidden');
+                    }
+                });
+
+                deleteBtn.addEventListener('click', () => {
+                    editingShortcuts.splice(index, 1);
+                    renderEditorList(); // 再描画
+                });
+
+                modalEditorList.appendChild(row);
+            });
+        }
+
+        // 新規追加ボタン
+        document.getElementById('addNewShortcutBtn').addEventListener('click', () => {
+            const colors = ['#60a5fa', '#4ade80', '#f472b6', '#a78bfa', '#fbbf24'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            editingShortcuts.push({
+                id: Date.now().toString(),
+                label: '新しいボタン',
+                type: 'copy',
+                value: 'テキスト',
+                color: randomColor
+            });
+            renderEditorList();
+            
+            // 一番下までスクロール
             setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
+                modalEditorList.scrollTop = modalEditorList.scrollHeight;
+            }, 50);
+        });
 
-        // ショートカット機能
-        function recordTimestamp() {
-            const now = new Date();
-            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            scratchpad.value += `\n[${timeStr}] ★ハイライト`;
-            scratchpad.scrollTop = scratchpad.scrollHeight;
-            showToast('タイムスタンプをメモに記録しました');
-        }
+        // モーダル操作イベント
+        document.getElementById('openEditBtn').addEventListener('click', openModal);
+        document.getElementById('closeEditBtn').addEventListener('click', closeModal);
+        document.getElementById('cancelEditBtn').addEventListener('click', closeModal);
+        
+        document.getElementById('saveEditBtn').addEventListener('click', () => {
+            shortcuts = [...editingShortcuts];
+            try {
+                localStorage.setItem('streamerDashShortcuts', JSON.stringify(shortcuts));
+                showToast('ショートカットを保存しました');
+            } catch (e) {
+                console.error("ローカルストレージへの保存に失敗しました", e);
+                showToast('保存に失敗しました（ブラウザの設定をご確認ください）', true);
+            }
+            renderShortcuts();
+            closeModal();
+        });
 
-        function addMemoCheckbox() {
-            scratchpad.value += `\n□ `;
-            scratchpad.scrollTop = scratchpad.scrollHeight;
-            scratchpad.focus();
-        }
-
+        // メモ帳クリア
+        const scratchpad = document.getElementById('scratchpad');
         document.getElementById('clearMemoBtn').addEventListener('click', () => {
             if (confirm('メモをクリアしますか？')) {
                 scratchpad.value = '';
             }
         });
 
-        // 配信時間（アップタイム）タイマー
+
+        /* =========================================================================
+           YouTube 連携機能 (既存)
+        ========================================================================= */
+        let youtubePollingInterval = null;
+        let subscriberPollingInterval = null;
+        let uptimeInterval = null;
+        let activeLiveChatId = null;
+        let nextPageToken = '';
+        let isYouTubeConnected = false;
+
+        const statusIndicator = document.getElementById('statusIndicator');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const errorAlert = document.getElementById('errorAlert');
+        const chatContainer = document.getElementById('chatContainer');
+        const subscriberCount = document.getElementById('subscriberCount');
+        const streamUptime = document.getElementById('streamUptime');
+        
+        const apiKeyInput = document.getElementById('youtubeApiKey');
+        const channelIdInput = document.getElementById('channelId');
+        const videoIdInput = document.getElementById('videoId');
+
+        function updateSettingsFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('apiKey')) apiKeyInput.value = params.get('apiKey');
+            if (params.has('channelId')) channelIdInput.value = params.get('channelId');
+            if (params.has('videoId')) videoIdInput.value = params.get('videoId');
+        }
+
+        document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+            const params = new URLSearchParams();
+            if (apiKeyInput.value) params.set('apiKey', apiKeyInput.value);
+            if (channelIdInput.value) params.set('channelId', channelIdInput.value);
+            if (videoIdInput.value) params.set('videoId', videoIdInput.value);
+            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+            await copyToClipboard(url, '設定URL');
+        });
+
+        function extractVideoId(input) {
+            if (!input) return '';
+            const match = input.match(/(?:youtu\.be\/|v=|\/v\/|\/embed\/)([A-Za-z0-9_-]{11})/);
+            return match ? match[1] : input.trim();
+        }
+
         function startUptimeTimer(startTimeStr) {
             clearInterval(uptimeInterval);
             if (!startTimeStr) {
                 streamUptime.innerText = "未開始";
                 return;
             }
-            
             const startTime = new Date(startTimeStr).getTime();
             uptimeInterval = setInterval(() => {
                 const now = new Date().getTime();
                 const diff = now - startTime;
-                
                 if (diff < 0) {
                     streamUptime.innerText = "開始前";
                     return;
                 }
-                
                 const hours = Math.floor(diff / (1000 * 60 * 60));
                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                
                 streamUptime.innerText = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             }, 1000);
         }
 
-        // APIステータスUI
         function setStatus(status, message = null) {
             errorAlert.classList.add('hidden');
             if (status === 'connected') {
@@ -328,9 +528,7 @@
             }
         }
 
-        // YouTube API 接続・データ取得
         async function initYouTubeConnection() {
-            // 前回のポーリングをクリア
             if (youtubePollingInterval) clearInterval(youtubePollingInterval);
             if (subscriberPollingInterval) clearInterval(subscriberPollingInterval);
             if (uptimeInterval) clearInterval(uptimeInterval);
@@ -342,8 +540,6 @@
             const apiKey = apiKeyInput.value.trim();
             const channelId = channelIdInput.value.trim();
             const videoInputStr = videoIdInput.value.trim();
-            
-            // URLだった場合はIDを抽出
             const videoId = extractVideoId(videoInputStr);
 
             if (!apiKey) {
@@ -352,18 +548,15 @@
             }
 
             try {
-                // 1. チャンネル登録者数の取得 (初期)
                 if (channelId) {
                     await fetchSubscriberCount(channelId, apiKey);
-                    subscriberPollingInterval = setInterval(() => fetchSubscriberCount(channelId, apiKey), 60000); // 1分更新
+                    subscriberPollingInterval = setInterval(() => fetchSubscriberCount(channelId, apiKey), 60000);
                 }
 
-                // 2. ライブチャットIDと配信開始時間の取得
                 if (videoId) {
                     const videoDetails = await getLiveVideoDetails(videoId, apiKey);
                     activeLiveChatId = videoDetails.activeLiveChatId;
                     
-                    // 配信開始時刻をもとにタイマー起動
                     if (videoDetails.actualStartTime) {
                         startUptimeTimer(videoDetails.actualStartTime);
                     } else {
@@ -373,29 +566,19 @@
                     setStatus('connected');
                     isYouTubeConnected = true;
 
-                    // コメント初回取得＆ポーリング開始
                     await fetchLiveChat(apiKey);
-                    youtubePollingInterval = setInterval(() => fetchLiveChat(apiKey), 5000); // 5秒更新
+                    youtubePollingInterval = setInterval(() => fetchLiveChat(apiKey), 5000);
                 } else {
                     setStatus('connected');
-                    const msg = document.createElement('div');
-                    msg.className = "text-gray-500 text-sm text-center mt-10";
-                    msg.innerText = "動画ID（またはURL）が未設定のため、コメントは取得されません。";
-                    chatContainer.appendChild(msg);
+                    chatContainer.innerHTML = `<div class="text-gray-500 text-sm text-center mt-10">動画ID（またはURL）が未設定のため、コメントは取得されません。</div>`;
                 }
 
             } catch (error) {
                 console.error("YouTube connection error:", error);
-                
                 let errorMsg = '接続に失敗しました。';
-                if (error.message.includes('403')) {
-                    errorMsg = 'APIキーがブロックされました(403)。Google Cloud Consoleで「YouTube Data API v3」が有効になっているか、APIキーの制限設定を見直してください。';
-                } else if (error.message.includes('400')) {
-                    errorMsg = 'APIキーまたはIDの形式が不正です。不要な文字が入っていないか確認してください。';
-                } else {
-                    errorMsg = error.message;
-                }
-                
+                if (error.message.includes('403')) errorMsg = 'APIキーがブロックされました(403)。';
+                else if (error.message.includes('400')) errorMsg = 'APIキーまたはIDの形式が不正です。';
+                else errorMsg = error.message;
                 setStatus('error', errorMsg);
             }
         }
@@ -404,53 +587,37 @@
             const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${apiKey}`;
             const response = await fetch(url);
             if (!response.ok) throw new Error(`Sub fetch error: ${response.status}`);
-            
             const data = await response.json();
             if (data.items && data.items.length > 0) {
-                const count = data.items[0].statistics.subscriberCount;
-                subscriberCount.innerText = Number(count).toLocaleString();
+                subscriberCount.innerText = Number(data.items[0].statistics.subscriberCount).toLocaleString();
             }
         }
 
         async function getLiveVideoDetails(videoId, apiKey) {
             const url = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${apiKey}`;
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Video fetch HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`Video fetch HTTP error! status: ${response.status}`);
             const data = await response.json();
             if (data.items && data.items.length > 0 && data.items[0].liveStreamingDetails) {
                 return data.items[0].liveStreamingDetails;
             } else {
-                throw new Error('指定された動画のライブ配信情報が見つかりません。ライブ中かどうか確認してください。');
+                throw new Error('指定された動画のライブ配信情報が見つかりません。ライブ中か確認してください。');
             }
         }
 
         async function fetchLiveChat(apiKey) {
             if (!activeLiveChatId) return;
-
             let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${activeLiveChatId}&part=snippet,authorDetails&key=${apiKey}`;
-            if (nextPageToken) {
-                url += `&pageToken=${nextPageToken}`;
-            }
+            if (nextPageToken) url += `&pageToken=${nextPageToken}`;
 
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Live chat fetch error');
-                
                 const data = await response.json();
-                
-                // 次のページトークンを更新
                 nextPageToken = data.nextPageToken;
 
                 if (data.items && data.items.length > 0) {
-                    // 初回読み込み時は過去コメントで埋まらないよう最新10件くらいに絞るなどの処理も可能
-                    // 今回はシンプルに全部追加
-                    data.items.forEach(item => {
-                        appendChatMessage(item);
-                    });
-                    
-                    // 自動スクロール
+                    data.items.forEach(item => appendChatMessage(item));
                     chatContainer.scrollTop = chatContainer.scrollHeight;
                 }
             } catch (error) {
@@ -471,7 +638,6 @@
 
             const msgDiv = document.createElement('div');
             msgDiv.className = 'flex gap-3 hover:bg-gray-700/50 p-2 rounded transition-colors group';
-            
             msgDiv.innerHTML = `
                 <img src="${authorImg}" alt="avatar" class="w-8 h-8 rounded-full border border-gray-600">
                 <div class="flex-1 min-w-0">
@@ -482,18 +648,15 @@
                     <div class="text-sm text-gray-100 break-words mt-0.5 leading-relaxed">${message}</div>
                 </div>
             `;
-            
             chatContainer.appendChild(msgDiv);
         }
 
-        // 初期化処理
         document.getElementById('applyBtn').addEventListener('click', initYouTubeConnection);
         
-        // ページ読み込み時
         window.addEventListener('DOMContentLoaded', () => {
+            loadShortcuts();
             updateSettingsFromUrl();
             if (apiKeyInput.value) {
-                // パラメータに設定があれば自動接続
                 initYouTubeConnection();
             }
         });
